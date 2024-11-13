@@ -1,0 +1,6 @@
+@TraceabilityNutRunnerApi_HostAddress = http://localhost:5032
+
+GET {{TraceabilityNutRunnerApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

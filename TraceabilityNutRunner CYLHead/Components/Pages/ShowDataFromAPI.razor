@@ -1,0 +1,46 @@
+﻿@page "/showDataFromAPI"
+
+
+@using TraceabilityNutRunner_CYLHead.Models
+
+@inject ApiService ApiService
+
+<MudList T="TighteningResult">
+    @foreach (var result in tighteningResults)
+    {
+        <MudListItem T="TighteningResult">
+            @result.EngineNumber - @result.ResultTighteningStatus
+        </MudListItem>
+    }
+</MudList>
+
+@code {
+    private List<TighteningResult> tighteningResults = new List<TighteningResult>();
+    private Timer updateTimer; // Timer for periodic API calls
+
+    // Called when the component is initialized
+    protected override async Task OnInitializedAsync()
+    {
+        // Start polling the API every 10 seconds
+        updateTimer = new Timer(async _ => await PollApi(), null, 0, 10000);
+    }
+
+    // This method is called to poll the API and fetch new data
+    private async Task PollApi()
+    {
+        var results = await ApiService.GetTighteningResultsAsync();
+
+        // Check if the data is valid and not empty
+        if (results != null && results.Count > 0)
+        {
+            tighteningResults = results;
+            StateHasChanged(); // Trigger a UI update
+        }
+    }
+
+    // Dispose of the timer when the component is disposed
+    public void Dispose()
+    {
+        updateTimer?.Dispose();
+    }
+}

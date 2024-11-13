@@ -1,0 +1,32 @@
+﻿
+
+<MudStack AlignItems="AlignItems.Center">
+    <MudPaper Class="mt-5" Elevation="0" style="background-color: white;">
+        <MudLink Href="/">
+            <MudImage Class="p-1" Src="/Image/Hino.png" Alt="logo" Width="120" />
+        </MudLink>
+    </MudPaper>
+</MudStack>
+
+<MudNavMenu Rounded="true" Margin="Margin.Normal" Class="pa-2">
+    <MudNavLink Href="/nutRunner" Match="NavLinkMatch.Prefix" style="font-size: 20px;">NutRunner</MudNavLink>
+    <MudNavLink Href="/traceabilityNew" Match="NavLinkMatch.Prefix" style="font-size: 20px;">TraceabilityNew</MudNavLink>
+    <MudNavLink Href="/showDataFromAPI" Match="NavLinkMatch.Prefix" style="font-size: 20px;">ShowDataFromAPI</MudNavLink>
+    <MudNavLink Href="/submitTighteningResult" Match="NavLinkMatch.Prefix" style="font-size: 20px;">SubmitTighteningResult</MudNavLink>
+</MudNavMenu>
+
+
+
+
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+
+    }
+}

@@ -1,0 +1,79 @@
+﻿@page "/nutRunner"
+@using System.Collections.Generic
+@using MudBlazor
+
+
+<MudGrid>
+    <MudItem xs="12">
+        <MudPaper Class="d-flex align-items-center justify-content-between p-3">
+            <div class="d-flex align-items-center">
+                <MudText Class="ml-2" Style="font-weight: bold; font-size: 1.5rem;">PT. HINO MOTOR MANUFACTURING INDONESIA</MudText>
+            </div>
+            <MudText>@DateTime.Now.ToString("F")</MudText>
+        </MudPaper>
+
+        <MudPaper Class="d-flex align-items-center justify-content-between p-3">
+            <div class="d-flex align-items-center">
+                <MudText Style="color: red;">Traceability Nutrunner Cylinder Head</MudText>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="d-flex align-items-center justify-content-between p-3">
+            <MudGrid Spacing="10" Justify="Justify.FlexStart">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="engineNumber" Label="Engine Number" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="measurementStatus" Label="Measurement Status" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="dateTimeMeasurement" Label="Date Time Measurement" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudGrid>
+            @foreach (var spindle in Spindles)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <MudPaper Class="pa-4" Elevation="4">
+                        <MudText Typo="Typo.subtitle1">Spindle @spindle.Id</MudText>
+                        <MudTextField @bind-Value="spindle.Torque" Label="Torque (Nm)" Variant="Variant.Outlined" />
+                        <MudTextField @bind-Value="spindle.Angle" Label="Angle (°)" Variant="Variant.Outlined" />
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudItem>
+</MudGrid>
+@code {
+    // Model for spindle data
+    public class Spindle
+    {
+        public int Id { get; set; }
+        public decimal Torque { get; set; }
+        public decimal Angle { get; set; }
+    }
+
+    private string engineNumber;
+    private string measurementStatus;
+    private string dateTimeMeasurement = DateTime.Now.ToString("F");
+    private List<Spindle> spindles = new List<Spindle>();
+    private System.Timers.Timer timer;
+
+    // Initial spindle data
+    private List<Spindle> Spindles { get; set; } = new();
+
+    protected override void OnInitialized()
+    {
+        // Create 30 spindles with default data
+        for (int i = 1; i <= 30; i++)
+        {
+            Spindles.Add(new Spindle { Id = i, Torque = 0, Angle = 0 });
+        }
+    }
+}

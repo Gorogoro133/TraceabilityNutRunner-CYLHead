@@ -1,0 +1,218 @@
+﻿@inherits LayoutComponentBase
+@using System.Timers
+@using TraceabilityNutRunner_CYLHead.Models
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="4">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => DrawerToggle())" />
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End" />
+        <div>
+            <p>@("DateTimeMeasurement: " + dateTimeMeasurement)</p>
+        </div>
+        <div>
+            <p>@("EngineNumber: " + engineNumber)</p>
+        </div>
+        <div>
+            <p>@("MeasurementStatus: " + measurementStatus)</p>
+        </div>
+        <div>
+
+            <MudText Style="color: green;">
+                FTP Connection:
+                <MudIcon Icon="@indicatorIcon" Color="@indicatorColor" Size="Size.Medium" />
+            </MudText>
+        </div>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h5" Class="mt-1">Application</MudText>
+            
+        </MudDrawerHeader>
+        <NavMenu />
+    </MudDrawer>
+    
+    <MudMainContent Class="mt-16 pa-4">
+        <CascadingValue Value="isConnected">
+            <CascadingValue Value="ftpService">
+                <CascadingValue Value="hasDataChanged">
+                    <CascadingValue Value="dateTimeMeasurement" Name="dateTimeMeasurement">
+                        <CascadingValue Value="engineNumber" Name="engineNumber">
+                            <CascadingValue Value="measurementStatus" Name="measurementStatus">
+                                <CascadingValue Value="spindles" Name="spindles">
+                                    @Body
+                                </CascadingValue>
+                            </CascadingValue>
+                        </CascadingValue>
+                    </CascadingValue>
+                </CascadingValue>
+            </CascadingValue>
+        </CascadingValue>
+    </MudMainContent>
+</MudLayout>
+
+
+
+@code {
+    //private const string ftpHost = "192.168.137.128";
+    private const string ftpHost = "192.168.100.4";
+    private const string ftpUsername = "Intouch";
+    private const string ftpPassword = "1111";
+    private bool hasDataChanged = false;
+
+    private string indicatorIcon => isConnected ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error;
+    private Color indicatorColor => isConnected ? Color.Success : Color.Error;
+
+    bool _drawerOpen = true;
+    private bool isConnected = false;
+    private FtpService ftpService = new FtpService(ftpHost, ftpUsername, ftpPassword);
+    private Timer updateTimer;
+    private string engineNumber;
+    private string dateTimeMeasurement ;
+
+    private string measurementStatus;
+    private List<Spindle> spindles = new List<Spindle>();
+    private string previousOkContent = string.Empty;
+    private string previousNokContent = string.Empty;
+
+    private TighteningResult tighteningResult = new TighteningResult();
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TryLoginAndStartDataCheck();
+    }
+
+    private async Task TryLoginAndStartDataCheck()
+    {
+        isConnected = ftpService.Login();
+
+        if (isConnected)
+        {
+            updateTimer = new Timer(2000);  // Poll every 2 seconds
+            updateTimer.Elapsed += async (sender, args) => await InvokeAsync(async () =>
+            {
+                if (ftpService.IsConnected())
+                {
+                    bool dataChanged = await LoadData();
+                    if (dataChanged)
+                    {
+                        hasDataChanged = true; // Data has changed
+                        StateHasChanged(); // Trigger UI update
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("FTP connection lost, attempting to reconnect...");
+                    isConnected = ftpService.Login(); // Try reconnecting to FTP
+                    StateHasChanged(); // Reflect new connection status in UI
+                }
+            });
+            updateTimer.AutoReset = true;
+            updateTimer.Enabled = true;
+        }
+        else
+        {
+            Console.WriteLine("Failed to connect to FTP service.");
+        }
+    }
+
+    private async Task<bool> LoadData()
+    {
+        try
+        {
+
+            var okData = ftpService.GetAllDataFromCSV("/LOGGING_00_00_OK.csv");
+            var nokData = ftpService.GetAllDataFromCSV("/LOGGING_00_01_NOK.csv");
+
+            var latestOkData = okData?.Count > 0 ? okData[^1] : null;
+            var latestNokData = nokData?.Count > 0 ? nokData[^1] : null;
+
+            // Convert latest row data to strings for comparison
+            string okContent = latestOkData != null ? $"{latestOkData.Datatime},{latestOkData.Engine_No},{string.Join(",", latestOkData.DataArray)}" : string.Empty;
+            string nokContent = latestNokData != null ? $"{latestNokData.Datatime},{latestNokData.Engine_No},{string.Join(",", latestNokData.DataArray)}" : string.Empty;
+
+            // Check for changes in OK or NOK data
+            if (okContent != previousOkContent || nokContent != previousNokContent)
+            {
+                if (okContent != previousOkContent)
+                {
+                    measurementStatus = "OK";
+                    previousOkContent = okContent;
+                    UpdateDisplayData(latestOkData);
+                }
+                else if (nokContent != previousNokContent)
+                {
+                    measurementStatus = "NOK";
+                    previousNokContent = nokContent;
+                    UpdateDisplayData(latestNokData);
+                }
+                return true; // Data has changed
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        return false; // No data change
+    }
+
+    private void UpdateDisplayData(DataFromCsv rowData)
+    {
+        if (rowData == null) return;
+        // Update the measurement data for the UI
+        dateTimeMeasurement = rowData.Datatime;
+        engineNumber = rowData.Engine_No;
+
+        // Populate TighteningResult
+        tighteningResult = new TighteningResult
+            {
+                TimeStamp = dateTimeMeasurement,
+                EngineNumber = engineNumber,
+                ResultTighteningStatus = measurementStatus
+            };
+
+        spindles.Clear();
+        tighteningResult.TighteningDetails.Clear();
+        for (int i = 0; i < rowData.DataArray.Length; i += 2)
+        {
+            spindles.Add(new Spindle
+                {
+                    Id = (i / 2) + 1,
+                    Torque = rowData.DataArray[i],
+                    Angle = rowData.DataArray[i + 1]
+                });
+        }
+        for (int j = 0; j < rowData.DataArray.Length; j += 2)
+        {
+
+            // Populate TighteningDetail
+            var tighteningDetail = new TighteningDetail
+                {
+                    SpindleNumber = (j / 2) + 1,
+                    TorqueResult = rowData.DataArray[j],
+                    AngleResult = rowData.DataArray[j + 1]
+                };
+
+            //tighteningResult.TighteningDetails.Add(tighteningDetail);
+            //spindles.Add(spindle);
+        }
+    }
+
+    public void Dispose()
+    {
+        updateTimer?.Dispose();
+        ftpService.Logout();
+    }
+
+}

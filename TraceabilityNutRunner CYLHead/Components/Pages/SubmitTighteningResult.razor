@@ -1,0 +1,35 @@
+﻿@page "/submitTighteningResult"
+@inject TighteningResultService tighteningResultService
+@using TraceabilityNutRunner_CYLHead.Models
+
+@using TraceabilityNutRunner_CYLHead.Services
+<MudButton OnClick="SubmitTighteningResultbutton">Send Tightening Result</MudButton>
+
+@code {
+    private TighteningResult tighteningResult = new TighteningResult
+
+    {
+        EngineNumber = "123456",
+        ResultTighteningStatus = "OK",
+        TimeStamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+        TighteningDetails = new List<TighteningDetail>
+        {
+            new TighteningDetail { SpindleNumber = 1, TorqueResult = "15.5", AngleResult = "30" },
+            new TighteningDetail { SpindleNumber = 2, TorqueResult = "16.0", AngleResult = "31" }
+        }
+    };
+
+    private async Task SubmitTighteningResultbutton()
+    {
+        bool success = await tighteningResultService.SendTighteningResultAsync(tighteningResult);
+
+        if (success)
+        {
+            Console.WriteLine("TighteningResult data successfully sent to the API.");
+        }
+        else
+        {
+            Console.WriteLine("Failed to send data to the API.");
+        }
+    }
+}
